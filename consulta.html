@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CONSULTAS / EXAMES MARCADOS</title>
+
+<style>
+
+body{
+background:#0b0b0b;
+color:#fff;
+font-family:Segoe UI;
+margin:0;
+padding:20px;
+}
+
+h1{
+text-align:center;
+font-size:22px;
+}
+
+.container{
+max-width:700px;
+margin:auto;
+background:#121212;
+padding:20px;
+border-radius:12px;
+}
+
+input,button{
+width:100%;
+padding:12px;
+margin-top:10px;
+border:none;
+border-radius:8px;
+}
+
+input{
+background:#1c1c1c;
+color:white;
+}
+
+button{
+background:#00c853;
+color:white;
+font-weight:bold;
+cursor:pointer;
+}
+
+button:hover{
+background:#00e676;
+}
+
+.consulta{
+background:#1a1a1a;
+padding:15px;
+border-radius:10px;
+margin-top:10px;
+border-left:4px solid #00c853;
+}
+
+.excluir{
+background:#ff4444;
+}
+
+.editar{
+background:#2196f3;
+}
+
+.painel{
+display:flex;
+justify-content:space-between;
+margin-bottom:15px;
+background:#1a1a1a;
+padding:10px;
+border-radius:8px;
+}
+
+.botoes{
+display:flex;
+gap:8px;
+margin-top:10px;
+}
+
+.botoes button{
+flex:1;
+padding:8px 14px;
+}
+
+.linha-data-hora{
+display:flex;
+gap:10px;
+}
+
+.linha-data-hora input{
+flex:1;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>📅 CONSULTAS / EXAMES MARCADOS</h1>
+
+<div class="container">
+
+<div class="painel">
+<div>📊 Total: <span id="total">0</span></div>
+<div>⏰ Próxima: <span id="proxima">Nenhuma</span></div>
+</div>
+
+<input type="text" id="pesquisa" placeholder="🔍 Pesquisar consulta" onkeyup="mostrar()">
+
+<input type="text" id="nome" placeholder="Nome da consulta ou exame">
+
+<input type="text" id="especialidade" placeholder="Especialidade (ex: cardiologia)">
+
+<input type="text" id="hospital" placeholder="Digite o hospital / clínica">
+
+<div class="linha-data-hora">
+<input type="date" id="data">
+<input type="time" id="hora">
+</div>
+
+<button onclick="salvarConsulta()">Salvar</button>
+
+<div id="lista"></div>
+
+</div>
+
+<audio id="somAlarme">
+<source src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" type="audio/ogg">
+</audio>
+
+<script>
+
+let consultas = JSON.parse(localStorage.getItem("consultas")) || [];
+let editando = -1;
+
+if(Notification.permission !== "granted"){
+Notification.requestPermission();
+}
+
+function tocarAlarme(){
+let som = document.getElementById("somAlarme");
+som.play();
+}
+
+function formatarData(data){
+let p=data.split("-");
+return p[2]+"/"+p[1]+"/"+p[0];
+}
+
+function salvarConsulta(){
+
+let nome=document.getElementById("nome").value;
+let esp=document.getElementById("especialidade").value;
+let hospital=document.getElementById("hospital").value;
+let data=document.getElementById("data").value;
+let hora=document.getElementById("hora").value;
+
+if(nome==""||data==""||hora==""||hospital==""){
+alert("Preencha tudo");
+return;
+}
+
+if(editando==-1){
+consultas.push({nome,esp,hospital,data,hora,alerta24:false,alerta12:false});
+}else{
+consultas[editando]={nome,esp,hospital,data,hora,alerta24:false,alerta12:false};
+editando=-1;
+}
+
+ordenar();
+
+localStorage.setItem("consultas",JSON.stringify(consultas));
+
+limpar();
+
+mostrar();
+
+}
+
+function ordenar(){
+consultas.sort((a,b)=>{
+return new Date(a.data+" "+a.hora)-new Date(b.data+" "+b.hora);
+});
+}
+
+function limpar(){
+nome.value="";
+especialidade.value="";
+hospital.value="";
+data.value="";
+hora.value="";
+}
+
+function mostrar(){
+
+ordenar();
+
+let lista=document.getElementById("lista");
+let busca=document.getElementById("pesquisa").value.toLowerCase();
+
+lista.innerHTML="";
+
+consultas.forEach((c,i)=>{
+
+if(!c.nome.toLowerCase().includes(busca)) return;
+
+lista.innerHTML+=`
+
+<div class="consulta">
+
+<b>${c.nome}</b><br>
+
+👨‍⚕️ ${c.esp}<br>
+
+🏥 ${c.hospital}<br>
+
+📅 ${formatarData(c.data)} ⏰ ${c.hora}
+
+<div class="botoes">
+
+<button class="editar" onclick="editar(${i})">Editar</button>
+<button class="excluir" onclick="excluir(${i})">Excluir</button>
+
+</div>
+
+</div>
+
+`;
+
+});
+
+atualizarPainel();
+
+}
+
+function excluir(i){
+
+consultas.splice(i,1);
+
+localStorage.setItem("consultas",JSON.stringify(consultas));
+
+mostrar();
+
+}
+
+function editar(i){
+
+let c=consultas[i];
+
+nome.value=c.nome;
+especialidade.value=c.esp;
+hospital.value=c.hospital;
+data.value=c.data;
+hora.value=c.hora;
+
+editando=i;
+
+}
+
+function atualizarPainel(){
+
+total.innerText=consultas.length;
+
+if(consultas.length>0){
+proxima.innerText=formatarData(consultas[0].data)+" "+consultas[0].hora;
+}else{
+proxima.innerText="Nenhuma";
+}
+
+}
+
+function verificarAlertas(){
+
+let agora=new Date();
+
+consultas.forEach((c,i)=>{
+
+let dataConsulta=new Date(c.data+" "+c.hora);
+
+let diff=(dataConsulta-agora)/60000;
+
+if(diff<=1440 && diff>720 && !c.alerta24){
+
+notificar("Consulta em 24 horas",c.nome+" no "+c.hospital);
+tocarAlarme();
+
+consultas[i].alerta24=true;
+
+}
+
+if(diff<=720 && diff>0 && !c.alerta12){
+
+notificar("Consulta em 12 horas",c.nome+" no "+c.hospital);
+tocarAlarme();
+
+consultas[i].alerta12=true;
+
+}
+
+});
+
+localStorage.setItem("consultas",JSON.stringify(consultas));
+
+}
+
+function notificar(titulo,msg){
+
+if(Notification.permission==="granted"){
+
+new Notification("🔔 "+titulo,{
+body:msg
+});
+
+}
+
+}
+
+setInterval(verificarAlertas,60000);
+
+mostrar();
+
+</script>
+
+</body>
+</html>
