@@ -37,13 +37,6 @@ input{ background:#1c1c1c; color:white; width:100%; box-sizing:border-box; }
 body.claro input{ background:#eee; color:#000; }
 button{ background:#00c853; color:white; font-weight:bold; cursor:pointer; }
 
-.login{
-    max-width:400px;
-    margin:auto;
-    background:#121212;
-    padding:20px;
-    border-radius:12px;
-}
 .consulta{
     background:#1a1a1a;
     padding:15px;
@@ -89,7 +82,6 @@ body.claro .config{ background:#fff; }
 body.claro .config-item{ background:#eee; }
 
 .voltar{ font-size:18px; cursor:pointer; margin-bottom:10px; }
-.logout{ background:#ff4444; margin-top:20px; }
 .versao{ position:absolute; bottom:20px; left:20px; font-size:12px; opacity:0.7; }
 #listaConfig{ margin-top:10px; }
 
@@ -152,19 +144,10 @@ body.claro .reagendarModal{ background:#ddd; color:#000; }
 
     <div id="listaConfig"></div>
 
-    <button class="logout" onclick="logout()">Sair</button>
     <div class="versao">Versão Alpha.0.06</div>
 </div>
 
-<div id="loginTela" class="login">
-<h1>🔐 Login</h1>
-<input type="text" id="usuario" placeholder="Usuário">
-<input type="password" id="senha" placeholder="Senha">
-<label><input type="checkbox" id="lembrar"> Lembrar usuário</label>
-<button onclick="login()">Entrar</button>
-</div>
-
-<div id="app" style="display:none">
+<div id="app">
 <h1>📅 CONSULTAS / EXAMES</h1>
 <div class="container">
 <div>
@@ -191,23 +174,6 @@ function fecharConfig(){document.getElementById("config").classList.remove("abri
 function temaClaro(){document.body.classList.add("claro"); localStorage.setItem("tema","claro");}
 function temaEscuro(){document.body.classList.remove("claro"); localStorage.setItem("tema","escuro");}
 if(localStorage.getItem("tema")=="claro"){document.body.classList.add("claro");}
-
-/* LOGIN */
-function login(){
-    let user=document.getElementById("usuario").value.trim();
-    let pass=document.getElementById("senha").value.trim();
-    let lembrar=document.getElementById("lembrar").checked;
-    if(!user || !pass){alert("Digite usuário e senha");return;}
-    if(lembrar){localStorage.setItem("usuarioLogado",user);}
-    iniciarApp();
-}
-function logout(){localStorage.removeItem("usuarioLogado");location.reload();}
-function iniciarApp(){
-    document.getElementById("loginTela").style.display="none";
-    document.getElementById("app").style.display="block";
-    mostrar(); 
-}
-if(localStorage.getItem("usuarioLogado")){iniciarApp();}
 
 /* CONSULTAS */
 function getConsultas(){return JSON.parse(localStorage.getItem("consultas")||"[]");}
@@ -398,6 +364,9 @@ function excluirConcluida(index){
     localStorage.setItem("concluidas",JSON.stringify(concluidas));
     toggleLista("concluidas");
 }
+
+// Iniciar app direto
+mostrar();
 </script>
 </body>
 </html>
