@@ -68,6 +68,14 @@ background:#ff4444;
 background:#2196f3;
 }
 
+.reagendar{
+background:#ff9800;
+}
+
+.concluir{
+background:#9c27b0;
+}
+
 .painel{
 display:flex;
 justify-content:space-between;
@@ -85,7 +93,7 @@ margin-top:10px;
 
 .botoes button{
 flex:1;
-padding:8px 14px;
+padding:8px;
 }
 
 .linha-data-hora{
@@ -97,12 +105,27 @@ gap:10px;
 flex:1;
 }
 
+.abas{
+display:flex;
+gap:10px;
+margin-bottom:10px;
+}
+
+.abas button{
+flex:1;
+background:#333;
+}
+
+.ativa{
+background:#00c853;
+}
+
 </style>
 </head>
 
 <body>
 
-<h1>📅 CONSULTAS / EXAMES MARCADOS</h1>
+<h1>📅 CONSULTAS / EXAMES</h1>
 
 <div class="container">
 
@@ -111,13 +134,16 @@ flex:1;
 <div>⏰ Próxima: <span id="proxima">Nenhuma</span></div>
 </div>
 
+<div class="abas">
+<button id="abaAgendada" class="ativa" onclick="trocarAba('agendadas')">📅 Agendadas</button>
+<button id="abaConcluida" onclick="trocarAba('concluidas')">✅ Concluídas</button>
+</div>
+
 <input type="text" id="pesquisa" placeholder="🔍 Pesquisar consulta" onkeyup="mostrar()">
 
 <input type="text" id="nome" placeholder="Nome da consulta ou exame">
-
-<input type="text" id="especialidade" placeholder="Especialidade (ex: cardiologia)">
-
-<input type="text" id="hospital" placeholder="Digite o hospital / clínica">
+<input type="text" id="especialidade" placeholder="Especialidade">
+<input type="text" id="hospital" placeholder="Hospital / Clínica">
 
 <div class="linha-data-hora">
 <input type="date" id="data">
@@ -137,16 +163,8 @@ flex:1;
 <script>
 
 let consultas = JSON.parse(localStorage.getItem("consultas")) || [];
-let editando = -1;
-
-if(Notification.permission !== "granted"){
-Notification.requestPermission();
-}
-
-function tocarAlarme(){
-let som = document.getElementById("somAlarme");
-som.play();
-}
+let aba="agendadas";
+let editando=-1;
 
 function formatarData(data){
 let p=data.split("-");
@@ -155,58 +173,74 @@ return p[2]+"/"+p[1]+"/"+p[0];
 
 function salvarConsulta(){
 
-let nome=document.getElementById("nome").value;
-let esp=document.getElementById("especialidade").value;
-let hospital=document.getElementById("hospital").value;
-let data=document.getElementById("data").value;
-let hora=document.getElementById("hora").value;
+let nome=nomeInput.value;
+let esp=especialidade.value;
+let hospital=hospitalInput.value;
+let data=dataInput.value;
+let hora=horaInput.value;
 
 if(nome==""||data==""||hora==""||hospital==""){
 alert("Preencha tudo");
 return;
 }
 
+let obj={
+nome,
+esp,
+hospital,
+data,
+hora,
+status:"agendada",
+alerta24:false,
+alerta12:false
+};
+
 if(editando==-1){
-consultas.push({nome,esp,hospital,data,hora,alerta24:false,alerta12:false});
+consultas.push(obj);
 }else{
-consultas[editando]={nome,esp,hospital,data,hora,alerta24:false,alerta12:false};
+consultas[editando]=obj;
 editando=-1;
 }
-
-ordenar();
 
 localStorage.setItem("consultas",JSON.stringify(consultas));
 
 limpar();
+mostrar();
+
+}
+
+function limpar(){
+nomeInput.value="";
+especialidade.value="";
+hospitalInput.value="";
+dataInput.value="";
+horaInput.value="";
+}
+
+function trocarAba(tipo){
+
+aba=tipo;
+
+abaAgendada.classList.remove("ativa");
+abaConcluida.classList.remove("ativa");
+
+if(tipo=="agendadas") abaAgendada.classList.add("ativa");
+if(tipo=="concluidas") abaConcluida.classList.add("ativa");
 
 mostrar();
 
 }
 
-function ordenar(){
-consultas.sort((a,b)=>{
-return new Date(a.data+" "+a.hora)-new Date(b.data+" "+b.hora);
-});
-}
-
-function limpar(){
-nome.value="";
-especialidade.value="";
-hospital.value="";
-data.value="";
-hora.value="";
-}
-
 function mostrar(){
 
-ordenar();
-
 let lista=document.getElementById("lista");
-let busca=document.getElementById("pesquisa").value.toLowerCase();
+let busca=pesquisa.value.toLowerCase();
 
 lista.innerHTML="";
 
 consultas.forEach((c,i)=>{
+
+if(c.status!=aba) return;
 
 if(!c.nome.toLowerCase().includes(busca)) return;
 
@@ -217,15 +251,18 @@ lista.innerHTML+=`
 <b>${c.nome}</b><br>
 
 👨‍⚕️ ${c.esp}<br>
-
 🏥 ${c.hospital}<br>
-
 📅 ${formatarData(c.data)} ⏰ ${c.hora}
 
 <div class="botoes">
 
 <button class="editar" onclick="editar(${i})">Editar</button>
+
+<button class="reagendar" onclick="editar(${i})">Reagendar</button>
+
 <button class="excluir" onclick="excluir(${i})">Excluir</button>
+
+${aba=="agendadas" ? `<button class="concluir" onclick="concluir(${i})">Concluir</button>`:""}
 
 </div>
 
@@ -253,78 +290,52 @@ function editar(i){
 
 let c=consultas[i];
 
-nome.value=c.nome;
+nomeInput.value=c.nome;
 especialidade.value=c.esp;
-hospital.value=c.hospital;
-data.value=c.data;
-hora.value=c.hora;
+hospitalInput.value=c.hospital;
+dataInput.value=c.data;
+horaInput.value=c.hora;
 
 editando=i;
 
 }
 
-function atualizarPainel(){
+function concluir(i){
 
-total.innerText=consultas.length;
-
-if(consultas.length>0){
-proxima.innerText=formatarData(consultas[0].data)+" "+consultas[0].hora;
-}else{
-proxima.innerText="Nenhuma";
-}
-
-}
-
-function verificarAlertas(){
-
-let agora=new Date();
-
-consultas.forEach((c,i)=>{
-
-let dataConsulta=new Date(c.data+" "+c.hora);
-
-let diff=(dataConsulta-agora)/60000;
-
-if(diff<=1440 && diff>720 && !c.alerta24){
-
-notificar("Consulta em 24 horas",c.nome+" no "+c.hospital);
-tocarAlarme();
-
-consultas[i].alerta24=true;
-
-}
-
-if(diff<=720 && diff>0 && !c.alerta12){
-
-notificar("Consulta em 12 horas",c.nome+" no "+c.hospital);
-tocarAlarme();
-
-consultas[i].alerta12=true;
-
-}
-
-});
+consultas[i].status="concluidas";
 
 localStorage.setItem("consultas",JSON.stringify(consultas));
 
-}
-
-function notificar(titulo,msg){
-
-if(Notification.permission==="granted"){
-
-new Notification("🔔 "+titulo,{
-body:msg
-});
+mostrar();
 
 }
 
+function atualizarPainel(){
+
+let agendadas=consultas.filter(c=>c.status=="agendada");
+
+total.innerText=agendadas.length;
+
+if(agendadas.length>0){
+
+agendadas.sort((a,b)=>new Date(a.data+" "+a.hora)-new Date(b.data+" "+b.hora));
+
+proxima.innerText=formatarData(agendadas[0].data)+" "+agendadas[0].hora;
+
+}else{
+
+proxima.innerText="Nenhuma";
+
 }
 
-setInterval(verificarAlertas,60000);
+}
 
 mostrar();
 
+</script>
+
+</body>
+</html>
 </script>
 
 </body>
