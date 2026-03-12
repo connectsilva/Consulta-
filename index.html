@@ -3,340 +3,401 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CONSULTAS / EXAMES MARCADOS</title>
-
+<title>CONSULTAS / EXAMES</title>
 <style>
-
 body{
-background:#0b0b0b;
-color:#fff;
-font-family:Segoe UI;
-margin:0;
-padding:20px;
+    background:#0b0b0b;
+    color:#fff;
+    font-family:Segoe UI, sans-serif;
+    margin:0;
+    padding:20px;
+    transition:0.3s;
 }
+body.claro{ background:#f5f5f5; color:#000; }
 
-h1{
-text-align:center;
-font-size:22px;
-}
+h1{text-align:center;font-size:22px;}
 
 .container{
-max-width:700px;
-margin:auto;
-background:#121212;
-padding:20px;
-border-radius:12px;
+    max-width:700px;
+    margin:auto;
+    background:#121212;
+    padding:20px;
+    border-radius:12px;
 }
+body.claro .container{ background:#fff; }
 
-input,button{
-width:100%;
-padding:12px;
-margin-top:10px;
-border:none;
-border-radius:8px;
+input, button{
+    padding:12px;
+    margin-top:10px;
+    border:none;
+    border-radius:8px;
+    font-size:16px;
 }
+input{ background:#1c1c1c; color:white; width:100%; box-sizing:border-box; }
+body.claro input{ background:#eee; color:#000; }
+button{ background:#00c853; color:white; font-weight:bold; cursor:pointer; }
 
-input{
-background:#1c1c1c;
-color:white;
+.login{
+    max-width:400px;
+    margin:auto;
+    background:#121212;
+    padding:20px;
+    border-radius:12px;
 }
-
-button{
-background:#00c853;
-color:white;
-font-weight:bold;
-cursor:pointer;
-}
-
-button:hover{
-background:#00e676;
-}
-
 .consulta{
-background:#1a1a1a;
-padding:15px;
-border-radius:10px;
-margin-top:10px;
-border-left:4px solid #00c853;
+    background:#1a1a1a;
+    padding:15px;
+    border-radius:10px;
+    margin-top:10px;
+    position:relative;
+    border-left:4px solid #00c853;
+}
+.consulta.reagendada{ border-left:4px solid #2196f3; }
+.consulta.concluida{ border-left:4px solid #888; opacity:0.7; }
+body.claro .consulta{ background:#f0f0f0; }
+
+.engrenagem{
+    position:fixed;
+    top:15px;
+    right:15px;
+    font-size:26px;
+    cursor:pointer;
 }
 
-.excluir{
-background:#ff4444;
+.config{
+    position:fixed;
+    top:0;
+    right:-320px;
+    width:300px;
+    height:100%;
+    background:#111;
+    padding:20px;
+    transition:0.4s;
+    overflow:auto;
+    z-index:1000;
 }
+body.claro .config{ background:#fff; }
+.config.abrir{ right:0; }
 
-.editar{
-background:#2196f3;
+.config-item{
+    margin-top:15px;
+    padding:12px;
+    background:#1e1e1e;
+    border-radius:8px;
+    cursor:pointer;
 }
+body.claro .config-item{ background:#eee; }
 
-.reagendar{
-background:#ff9800;
+.voltar{ font-size:18px; cursor:pointer; margin-bottom:10px; }
+.logout{ background:#ff4444; margin-top:20px; }
+.versao{ position:absolute; bottom:20px; left:20px; font-size:12px; opacity:0.7; }
+#listaConfig{ margin-top:10px; }
+
+/* Modal reagendar */
+.reagendarModal{
+    display:none;
+    margin-top:10px;
+    background:#222;
+    padding:10px;
+    border-radius:8px;
 }
-
-.concluir{
-background:#9c27b0;
+body.claro .reagendarModal{ background:#ddd; color:#000; }
+.reagendarModal input{ width:calc(50% - 6px); display:inline-block; margin-right:5px; margin-top:5px; }
+.reagendarModal button{
+    margin-top:5px;
+    background:#2196f3;
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
 }
+.reagendarModal button.cancelar{ background:#ff4444; }
 
-.painel{
-display:flex;
-justify-content:space-between;
-margin-bottom:15px;
-background:#1a1a1a;
-padding:10px;
-border-radius:8px;
+/* Data e hora lado a lado no formulário principal */
+#app .container input[type="date"],
+#app .container input[type="time"] {
+    width: calc(50% - 5px);
+    display: inline-block;
+    margin-right: 5px;
 }
+#app .container input[type="time"] { margin-right:0; }
 
-.botoes{
-display:flex;
-gap:8px;
-margin-top:10px;
+/* Botões lado a lado no card */
+.consulta > .botoes{
+    display:flex;
+    gap:10px;
+    margin-top:10px;
 }
-
-.botoes button{
-flex:1;
-padding:8px;
+.consulta > .botoes button{
+    flex:1;
 }
-
-.linha-data-hora{
-display:flex;
-gap:10px;
-}
-
-.linha-data-hora input{
-flex:1;
-}
-
-.abas{
-display:flex;
-gap:10px;
-margin-bottom:10px;
-}
-
-.abas button{
-flex:1;
-background:#333;
-}
-
-.ativa{
-background:#00c853;
-}
-
 </style>
 </head>
-
 <body>
 
+<div class="engrenagem" onclick="abrirConfig()">⚙️</div>
+
+<div class="config" id="config">
+    <div class="voltar" onclick="fecharConfig()">⬅ Voltar</div>
+    <h2>Configurações</h2>
+
+    <div class="config-item">
+        Tema<br>
+        <button onclick="temaEscuro()">🌙 Escuro</button>
+        <button onclick="temaClaro()">☀️ Claro</button>
+    </div>
+
+    <div class="config-item" id="btnAgendadas">📋 Consultas agendadas</div>
+    <div class="config-item" id="btnConcluidas">✅ Consultas concluídas</div>
+    <div class="config-item" id="btnHistorico">📜 Histórico de reagendamentos</div>
+
+    <div id="listaConfig"></div>
+
+    <button class="logout" onclick="logout()">Sair</button>
+    <div class="versao">Versão Alpha.0.06</div>
+</div>
+
+<div id="loginTela" class="login">
+<h1>🔐 Login</h1>
+<input type="text" id="usuario" placeholder="Usuário">
+<input type="password" id="senha" placeholder="Senha">
+<label><input type="checkbox" id="lembrar"> Lembrar usuário</label>
+<button onclick="login()">Entrar</button>
+</div>
+
+<div id="app" style="display:none">
 <h1>📅 CONSULTAS / EXAMES</h1>
-
 <div class="container">
-
-<div class="painel">
-<div>📊 Total: <span id="total">0</span></div>
-<div>⏰ Próxima: <span id="proxima">Nenhuma</span></div>
+<div>
+📊 Total: <span id="total">0</span><br>
+⏰ Próxima: <span id="proxima">Nenhuma</span>
 </div>
 
-<div class="abas">
-<button id="abaAgendada" class="ativa" onclick="trocarAba('agendadas')">📅 Agendadas</button>
-<button id="abaConcluida" onclick="trocarAba('concluidas')">✅ Concluídas</button>
-</div>
+<h3>🕐 Próxima Consulta</h3>
+<div id="proximaConsultaCard"></div>
 
-<input type="text" id="pesquisa" placeholder="🔍 Pesquisar consulta" onkeyup="mostrar()">
-
-<input type="text" id="nome" placeholder="Nome da consulta ou exame">
+<input type="text" id="nome" placeholder="Nome da consulta">
 <input type="text" id="especialidade" placeholder="Especialidade">
-<input type="text" id="hospital" placeholder="Hospital / Clínica">
-
-<div class="linha-data-hora">
+<input type="text" id="hospital" placeholder="Hospital">
 <input type="date" id="data">
 <input type="time" id="hora">
-</div>
-
 <button onclick="salvarConsulta()">Salvar</button>
-
-<div id="lista"></div>
-
 </div>
-
-<audio id="somAlarme">
-<source src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" type="audio/ogg">
-</audio>
+</div>
 
 <script>
+/* TEMA */
+function abrirConfig(){document.getElementById("config").classList.add("abrir");}
+function fecharConfig(){document.getElementById("config").classList.remove("abrir");}
+function temaClaro(){document.body.classList.add("claro"); localStorage.setItem("tema","claro");}
+function temaEscuro(){document.body.classList.remove("claro"); localStorage.setItem("tema","escuro");}
+if(localStorage.getItem("tema")=="claro"){document.body.classList.add("claro");}
 
-let consultas = JSON.parse(localStorage.getItem("consultas")) || [];
-let aba="agendadas";
-let editando=-1;
-
-function formatarData(data){
-let p=data.split("-");
-return p[2]+"/"+p[1]+"/"+p[0];
+/* LOGIN */
+function login(){
+    let user=document.getElementById("usuario").value.trim();
+    let pass=document.getElementById("senha").value.trim();
+    let lembrar=document.getElementById("lembrar").checked;
+    if(!user || !pass){alert("Digite usuário e senha");return;}
+    if(lembrar){localStorage.setItem("usuarioLogado",user);}
+    iniciarApp();
 }
+function logout(){localStorage.removeItem("usuarioLogado");location.reload();}
+function iniciarApp(){
+    document.getElementById("loginTela").style.display="none";
+    document.getElementById("app").style.display="block";
+    mostrar(); 
+}
+if(localStorage.getItem("usuarioLogado")){iniciarApp();}
+
+/* CONSULTAS */
+function getConsultas(){return JSON.parse(localStorage.getItem("consultas")||"[]");}
+function getHistorico(){return JSON.parse(localStorage.getItem("historico")||"[]");}
+function getConcluidas(){return JSON.parse(localStorage.getItem("concluidas")||"[]");}
 
 function salvarConsulta(){
-
-let nome=nomeInput.value;
-let esp=especialidade.value;
-let hospital=hospitalInput.value;
-let data=dataInput.value;
-let hora=horaInput.value;
-
-if(nome==""||data==""||hora==""||hospital==""){
-alert("Preencha tudo");
-return;
-}
-
-let obj={
-nome,
-esp,
-hospital,
-data,
-hora,
-status:"agendada",
-alerta24:false,
-alerta12:false
-};
-
-if(editando==-1){
-consultas.push(obj);
-}else{
-consultas[editando]=obj;
-editando=-1;
-}
-
-localStorage.setItem("consultas",JSON.stringify(consultas));
-
-limpar();
-mostrar();
-
+    let consultas=getConsultas();
+    let nome=document.getElementById("nome").value.trim();
+    let esp=document.getElementById("especialidade").value.trim();
+    let hospital=document.getElementById("hospital").value.trim();
+    let data=document.getElementById("data").value;
+    let hora=document.getElementById("hora").value;
+    if(!nome || !hospital || !data || !hora){alert("Preencha todos os campos");return;}
+    consultas.push({nome,esp,hospital,data,hora});
+    localStorage.setItem("consultas",JSON.stringify(consultas));
+    limpar();
+    mostrar();
 }
 
 function limpar(){
-nomeInput.value="";
-especialidade.value="";
-hospitalInput.value="";
-dataInput.value="";
-horaInput.value="";
+    document.getElementById("nome").value="";
+    document.getElementById("especialidade").value="";
+    document.getElementById("hospital").value="";
+    document.getElementById("data").value="";
+    document.getElementById("hora").value="";
 }
 
-function trocarAba(tipo){
+function formatarData(d){let p=d.split("-");return p[2]+"/"+p[1]+"/"+p[0];}
 
-aba=tipo;
-
-abaAgendada.classList.remove("ativa");
-abaConcluida.classList.remove("ativa");
-
-if(tipo=="agendadas") abaAgendada.classList.add("ativa");
-if(tipo=="concluidas") abaConcluida.classList.add("ativa");
-
-mostrar();
-
+function atualizarConcluidas(){
+    let consultas=getConsultas();
+    let concluidas=getConcluidas();
+    let novas=[];
+    const agora=new Date();
+    consultas.forEach(c=>{
+        let dh=new Date(c.data+"T"+c.hora);
+        if(dh<agora){concluidas.push(c);} else {novas.push(c);}
+    });
+    localStorage.setItem("consultas",JSON.stringify(novas));
+    localStorage.setItem("concluidas",JSON.stringify(concluidas));
 }
 
+/* MOSTRAR CONSULTAS */
 function mostrar(){
-
-let lista=document.getElementById("lista");
-let busca=pesquisa.value.toLowerCase();
-
-lista.innerHTML="";
-
-consultas.forEach((c,i)=>{
-
-if(c.status!=aba) return;
-
-if(!c.nome.toLowerCase().includes(busca)) return;
-
-lista.innerHTML+=`
-
-<div class="consulta">
-
-<b>${c.nome}</b><br>
-
-👨‍⚕️ ${c.esp}<br>
-🏥 ${c.hospital}<br>
-📅 ${formatarData(c.data)} ⏰ ${c.hora}
-
-<div class="botoes">
-
-<button class="editar" onclick="editar(${i})">Editar</button>
-
-<button class="reagendar" onclick="editar(${i})">Reagendar</button>
-
-<button class="excluir" onclick="excluir(${i})">Excluir</button>
-
-${aba=="agendadas" ? `<button class="concluir" onclick="concluir(${i})">Concluir</button>`:""}
-
-</div>
-
-</div>
-
-`;
-
-});
-
-atualizarPainel();
-
+    atualizarConcluidas();
+    let consultas=getConsultas();
+    const total=document.getElementById("total");
+    const proxima=document.getElementById("proxima");
+    const div=document.getElementById("proximaConsultaCard");
+    div.innerHTML="";
+    if(consultas.length===0){div.innerText="Nenhuma consulta"; total.innerText=0; proxima.innerText="Nenhuma"; return;}
+    consultas.sort((a,b)=> new Date(a.data+"T"+a.hora)-new Date(b.data+"T"+b.hora));
+    let c=consultas[0];
+    div.innerHTML=gerarCard(c,0,false);
+    total.innerText=consultas.length;
+    proxima.innerText=formatarData(c.data)+" "+c.hora;
 }
 
-function excluir(i){
-
-consultas.splice(i,1);
-
-localStorage.setItem("consultas",JSON.stringify(consultas));
-
-mostrar();
-
+/* GERAR CARD */
+function gerarCard(c,index,reagendada=false){
+    let cls=reagendada?"reagendada":"";
+    return `<div class="consulta ${cls}" id="consulta${index}">
+        <b>${c.nome}</b><br>👨‍⚕️ ${c.esp}<br>🏥 ${c.hospital}<br>📅 ${formatarData(c.data)} ⏰ ${c.hora}
+        <div class="botoes">
+            <button onclick="abrirReagendar(${index});event.stopPropagation();">Reagendar</button>
+            <button onclick="excluirConsulta(${index});event.stopPropagation();" style="background:#ff4444;">Excluir</button>
+        </div>
+        <div class="reagendarModal" id="modal${index}">
+            Nova data: <input type="date" id="novaData${index}">
+            Nova hora: <input type="time" id="novaHora${index}"><br>
+            <button onclick="confirmarReagendamento(${index})">Confirmar</button>
+            <button onclick="fecharReagendar(${index})" class="cancelar">Cancelar</button>
+        </div>
+    </div>`;
 }
 
-function editar(i){
+/* EXCLUIR CONSULTA */
+function excluirConsulta(index){
+    if(!confirm("Deseja realmente excluir esta consulta?")) return;
 
-let c=consultas[i];
+    let consultas = getConsultas();
+    let consulta = consultas[index];
+    consultas.splice(index,1);
+    localStorage.setItem("consultas",JSON.stringify(consultas));
 
-nomeInput.value=c.nome;
-especialidade.value=c.esp;
-hospitalInput.value=c.hospital;
-dataInput.value=c.data;
-horaInput.value=c.hora;
+    let concluidas = getConcluidas();
+    concluidas = concluidas.filter(c => !(c.nome===consulta.nome && c.data===consulta.data && c.hora===consulta.hora));
+    localStorage.setItem("concluidas",JSON.stringify(concluidas));
 
-editando=i;
+    let historico = getHistorico();
+    historico = historico.filter(h => h.nome!==consulta.nome);
+    localStorage.setItem("historico",JSON.stringify(historico));
 
+    mostrar();
+    toggleLista(null);
 }
 
-function concluir(i){
-
-consultas[i].status="concluidas";
-
-localStorage.setItem("consultas",JSON.stringify(consultas));
-
-mostrar();
-
+/* REAGENDAR */
+function abrirReagendar(index){document.getElementById("modal"+index).style.display="block";}
+function fecharReagendar(index){document.getElementById("modal"+index).style.display="none";}
+function confirmarReagendamento(index){
+    let consultas=getConsultas();
+    let historico=getHistorico();
+    let novaData=document.getElementById("novaData"+index).value;
+    let novaHora=document.getElementById("novaHora"+index).value;
+    if(!novaData || !novaHora){alert("Preencha nova data e hora"); return;}
+    historico.push({
+        nome:consultas[index].nome,
+        dataAntiga:consultas[index].data,
+        horaAntiga:consultas[index].hora,
+        dataNova:novaData,
+        horaNova:novaHora
+    });
+    consultas[index].data=novaData;
+    consultas[index].hora=novaHora;
+    localStorage.setItem("historico",JSON.stringify(historico));
+    localStorage.setItem("consultas",JSON.stringify(consultas));
+    fecharReagendar(index);
+    mostrar();
 }
 
-function atualizarPainel(){
+/* CLIQUE ÚNICO/DUPLO PARA CONFIGURAÇÕES */
+function toggleLista(tipo){
+    const div=document.getElementById("listaConfig");
+    if(!tipo){ div.innerHTML=""; return; }
 
-let agendadas=consultas.filter(c=>c.status=="agendada");
-
-total.innerText=agendadas.length;
-
-if(agendadas.length>0){
-
-agendadas.sort((a,b)=>new Date(a.data+" "+a.hora)-new Date(b.data+" "+b.hora));
-
-proxima.innerText=formatarData(agendadas[0].data)+" "+agendadas[0].hora;
-
-}else{
-
-proxima.innerText="Nenhuma";
-
+    div.innerHTML="";
+    if(tipo==="agendadas"){
+        div.innerHTML="<h3>Consultas agendadas</h3>";
+        let consultas=getConsultas();
+        let historico=getHistorico();
+        consultas.forEach((c,i)=>{
+            let reagendada=historico.some(h=>h.nome===c.nome && h.dataNova===c.data && h.horaNova===c.hora);
+            div.innerHTML+=gerarCard(c,i,reagendada);
+        });
+    } else if(tipo==="concluidas"){
+        div.innerHTML="<h3>Consultas concluídas</h3>";
+        let concluidas=getConcluidas();
+        if(concluidas.length===0){div.innerHTML+="<p>Nenhuma ainda</p>";return;}
+        concluidas.forEach((c,i)=>{
+            div.innerHTML+=`<div class="consulta concluida" id="concluida${i}">
+                <b>${c.nome}</b><br>${c.esp}<br>${c.hospital}<br>📅 ${formatarData(c.data)} ⏰ ${c.hora}
+                <div class="botoes">
+                    <button onclick="excluirConcluida(${i});" style="background:#ff4444;">Excluir</button>
+                </div>
+            </div>`;
+        });
+    } else if(tipo==="historico"){
+        div.innerHTML="<h3>Histórico de reagendamentos</h3>";
+        let historico=getHistorico();
+        if(historico.length===0){div.innerHTML+="<p>Nenhum reagendamento</p>";return;}
+        historico.forEach(h=>{
+            div.innerHTML+=`<div class="consulta"><b>${h.nome}</b><br>De: ${formatarData(h.dataAntiga)} ${h.horaAntiga}<br>Para: ${formatarData(h.dataNova)} ${h.horaNova}</div>`;
+        });
+    }
 }
 
+/* Configuração do clique único/duplo */
+let clickTimer = null; // global
+function setupToggle(elementId, tipo) {
+    const elem = document.getElementById(elementId);
+    elem.addEventListener("click", () => {
+        if(clickTimer){
+            // duplo clique
+            clearTimeout(clickTimer);
+            clickTimer = null;
+            toggleLista(null);
+        } else {
+            clickTimer = setTimeout(()=>{
+                toggleLista(tipo); // clique único abre
+                clickTimer = null;
+            }, 250);
+        }
+    });
 }
 
-mostrar();
+// Inicializar os botões
+setupToggle("btnAgendadas","agendadas");
+setupToggle("btnConcluidas","concluidas");
+setupToggle("btnHistorico","historico");
 
+/* Excluir consulta concluída */
+function excluirConcluida(index){
+    if(!confirm("Deseja excluir esta consulta concluída?")) return;
+    let concluidas=getConcluidas();
+    concluidas.splice(index,1);
+    localStorage.setItem("concluidas",JSON.stringify(concluidas));
+    toggleLista("concluidas");
+}
 </script>
-
-</body>
-</html>
-</script>
-
 </body>
 </html>
