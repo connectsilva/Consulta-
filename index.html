@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CONSULTAS / EXAMES</title>
+<style>
+body{
+    background:#0b0b0b;
+    color:#fff;
+    font-family:Segoe UI, sans-serif;
+    margin:0;
+    padding:20px;
+    transition:0.3s;
+}
+body.claro{ background:#f5f5f5; color:#000; }
+
+h1{text-align:center;font-size:22px;}
+
+.container{
+    max-width:700px;
+    margin:auto;
+    background:#121212;
+    padding:20px;
+    border-radius:12px;
+}
+body.claro .container{ background:#fff; }
+
+input, button{
+    padding:12px;
+    margin-top:10px;
+    border:none;
+    border-radius:8px;
+    font-size:16px;
+}
+input{ background:#1c1c1c; color:white; width:100%; box-sizing:border-box; }
+body.claro input{ background:#eee; color:#000; }
+button{ background:#00c853; color:white; font-weight:bold; cursor:pointer; }
+
+.consulta{
+    background:#1a1a1a;
+    padding:15px;
+    border-radius:10px;
+    margin-top:10px;
+    position:relative;
+    border-left:4px solid #00c853;
+}
+.consulta.reagendada{ border-left:4px solid #2196f3; }
+.consulta.concluida{ border-left:4px solid #888; opacity:0.7; }
+body.claro .consulta{ background:#f0f0f0; }
+
+.engrenagem{
+    position:fixed;
+    top:15px;
+    right:15px;
+    font-size:26px;
+    cursor:pointer;
+}
+
+.config{
+    position:fixed;
+    top:0;
+    right:-320px;
+    width:300px;
+    height:100%;
+    background:#111;
+    padding:20px;
+    transition:0.4s;
+    overflow:auto;
+    z-index:1000;
+}
+body.claro .config{ background:#fff; }
+.config.abrir{ right:0; }
+
+.config-item{
+    margin-top:15px;
+    padding:12px;
+    background:#1e1e1e;
+    border-radius:8px;
+    cursor:pointer;
+}
+body.claro .config-item{ background:#eee; }
+
+.voltar{ font-size:18px; cursor:pointer; margin-bottom:10px; }
+.versao{ position:absolute; bottom:20px; left:20px; font-size:12px; opacity:0.7; }
+#listaConfig{ margin-top:10px; }
+
+/* Modal reagendar */
+.reagendarModal{
+    display:none;
+    margin-top:10px;
+    background:#222;
+    padding:10px;
+    border-radius:8px;
+}
+body.claro .reagendarModal{ background:#ddd; color:#000; }
+.reagendarModal input{ width:calc(50% - 6px); display:inline-block; margin-right:5px; margin-top:5px; }
+.reagendarModal button{
+    margin-top:5px;
+    background:#2196f3;
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+}
+.reagendarModal button.cancelar{ background:#ff4444; }
+
+/* Data e hora lado a lado no formulário principal */
+#app .container input[type="date"],
+#app .container input[type="time"] {
+    width: calc(50% - 5px);
+    display: inline-block;
+    margin-right: 5px;
+}
+#app .container input[type="time"] { margin-right:0; }
+
+/* Botões lado a lado no card */
+.consulta > .botoes{
+    display:flex;
+    gap:10px;
+    margin-top:10px;
+}
+.consulta > .botoes button{
+    flex:1;
+}
+</style>
+</head>
+<body>
+
+<div class="engrenagem" onclick="abrirConfig()">⚙️</div>
+
+<div class="config" id="config">
+    <div class="voltar" onclick="fecharConfig()">⬅ Voltar</div>
+    <h2>Configurações</h2>
+
+    <div class="config-item">
+        Tema<br>
+        <button onclick="temaEscuro()">🌙 Escuro</button>
+        <button onclick="temaClaro()">☀️ Claro</button>
+    </div>
+
+    <div class="config-item" id="btnAgendadas">📋 Consultas agendadas</div>
+    <div class="config-item" id="btnConcluidas">✅ Consultas concluídas</div>
+    <div class="config-item" id="btnHistorico">📜 Histórico de reagendamentos</div>
+
+    <div id="listaConfig"></div>
+
+    <div class="versao">Versão Alpha.0.06</div>
+</div>
+
+<div id="app">
+<h1>📅 CONSULTAS / EXAMES</h1>
+<div class="container">
+<div>
+📊 Total: <span id="total">0</span><br>
+⏰ Próxima: <span id="proxima">Nenhuma</span>
+</div>
+
+<h3>🕐 Próxima Consulta</h3>
+<div id="proximaConsultaCard"></div>
+
+<input type="text" id="nome" placeholder="Nome da consulta">
+<input type="text" id="especialidade" placeholder="Especialidade">
+<input type="text" id="hospital" placeholder="Hospital">
+<input type="date" id="data">
+<input type="time" id="hora">
+<button onclick="salvarConsulta()">Salvar</button>
+</div>
+</div>
+
+<script>
+/* TEMA */
+function abrirConfig(){document.getElementById("config").classList.add("abrir");}
+function fecharConfig(){document.getElementById("config").classList.remove("abrir");}
+function temaClaro(){document.body.classList.add("claro"); localStorage.setItem("tema","claro");}
+function temaEscuro(){document.body.classList.remove("claro"); localStorage.setItem("tema","escuro");}
+if(localStorage.getItem("tema")=="claro"){document.body.classList.add("claro");}
+
+/* CONSULTAS */
+function getConsultas(){return JSON.parse(localStorage.getItem("consultas")||"[]");}
+function getHistorico(){return JSON.parse(localStorage.getItem("historico")||"[]");}
+function getConcluidas(){return JSON.parse(localStorage.getItem("concluidas")||"[]");}
+
+function salvarConsulta(){
+    let consultas=getConsultas();
+    let nome=document.getElementById("nome").value.trim();
+    let esp=document.getElementById("especialidade").value.trim();
+    let hospital=document.getElementById("hospital").value.trim();
+    let data=document.getElementById("data").value;
+    let hora=document.getElementById("hora").value;
+    if(!nome || !hospital || !data || !hora){alert("Preencha todos os campos");return;}
+    consultas.push({nome,esp,hospital,data,hora});
+    localStorage.setItem("consultas",JSON.stringify(consultas));
+    limpar();
+    mostrar();
+}
+
+function limpar(){
+    document.getElementById("nome").value="";
+    document.getElementById("especialidade").value="";
+    document.getElementById("hospital").value="";
+    document.getElementById("data").value="";
+    document.getElementById("hora").value="";
+}
+
+function formatarData(d){let p=d.split("-");return p[2]+"/"+p[1]+"/"+p[0];}
+
+function atualizarConcluidas(){
+    let consultas=getConsultas();
+    let concluidas=getConcluidas();
+    let novas=[];
+    const agora=new Date();
+    consultas.forEach(c=>{
+        let dh=new Date(c.data+"T"+c.hora);
+        if(dh<agora){concluidas.push(c);} else {novas.push(c);}
+    });
+    localStorage.setItem("consultas",JSON.stringify(novas));
+    localStorage.setItem("concluidas",JSON.stringify(concluidas));
+}
+
+/* MOSTRAR CONSULTAS */
+function mostrar(){
+    atualizarConcluidas();
+    let consultas=getConsultas();
+    const total=document.getElementById("total");
+    const proxima=document.getElementById("proxima");
+    const div=document.getElementById("proximaConsultaCard");
+    div.innerHTML="";
+    if(consultas.length===0){div.innerText="Nenhuma consulta"; total.innerText=0; proxima.innerText="Nenhuma"; return;}
+    consultas.sort((a,b)=> new Date(a.data+"T"+a.hora)-new Date(b.data+"T"+b.hora));
+    let c=consultas[0];
+    div.innerHTML=gerarCard(c,0,false);
+    total.innerText=consultas.length;
+    proxima.innerText=formatarData(c.data)+" "+c.hora;
+}
+
+/* GERAR CARD */
+function gerarCard(c,index,reagendada=false){
+    let cls=reagendada?"reagendada":"";
+    return `<div class="consulta ${cls}" id="consulta${index}">
+        <b>${c.nome}</b><br>👨‍⚕️ ${c.esp}<br>🏥 ${c.hospital}<br>📅 ${formatarData(c.data)} ⏰ ${c.hora}
+        <div class="botoes">
+            <button onclick="abrirReagendar(${index});event.stopPropagation();">Reagendar</button>
+            <button onclick="excluirConsulta(${index});event.stopPropagation();" style="background:#ff4444;">Excluir</button>
+        </div>
+        <div class="reagendarModal" id="modal${index}">
+            Nova data: <input type="date" id="novaData${index}">
+            Nova hora: <input type="time" id="novaHora${index}"><br>
+            <button onclick="confirmarReagendamento(${index})">Confirmar</button>
+            <button onclick="fecharReagendar(${index})" class="cancelar">Cancelar</button>
+        </div>
+    </div>`;
+}
+
+/* EXCLUIR CONSULTA */
+function excluirConsulta(index){
+    if(!confirm("Deseja realmente excluir esta consulta?")) return;
+
+    let consultas = getConsultas();
+    let consulta = consultas[index];
+    consultas.splice(index,1);
+    localStorage.setItem("consultas",JSON.stringify(consultas));
+
+    let concluidas = getConcluidas();
+    concluidas = concluidas.filter(c => !(c.nome===consulta.nome && c.data===consulta.data && c.hora===consulta.hora));
+    localStorage.setItem("concluidas",JSON.stringify(concluidas));
+
+    let historico = getHistorico();
+    historico = historico.filter(h => h.nome!==consulta.nome);
+    localStorage.setItem("historico",JSON.stringify(historico));
+
+    mostrar();
+    toggleLista(null);
+}
+
+/* REAGENDAR */
+function abrirReagendar(index){document.getElementById("modal"+index).style.display="block";}
+function fecharReagendar(index){document.getElementById("modal"+index).style.display="none";}
+function confirmarReagendamento(index){
+    let consultas=getConsultas();
+    let historico=getHistorico();
+    let novaData=document.getElementById("novaData"+index).value;
+    let novaHora=document.getElementById("novaHora"+index).value;
+    if(!novaData || !novaHora){alert("Preencha nova data e hora"); return;}
+    historico.push({
+        nome:consultas[index].nome,
+        dataAntiga:consultas[index].data,
+        horaAntiga:consultas[index].hora,
+        dataNova:novaData,
+        horaNova:novaHora
+    });
+    consultas[index].data=novaData;
+    consultas[index].hora=novaHora;
+    localStorage.setItem("historico",JSON.stringify(historico));
+    localStorage.setItem("consultas",JSON.stringify(consultas));
+    fecharReagendar(index);
+    mostrar();
+}
+
+/* CLIQUE ÚNICO/DUPLO PARA CONFIGURAÇÕES */
+function toggleLista(tipo){
+    const div=document.getElementById("listaConfig");
+    if(!tipo){ div.innerHTML=""; return; }
+
+    div.innerHTML="";
+    if(tipo==="agendadas"){
+        div.innerHTML="<h3>Consultas agendadas</h3>";
+        let consultas=getConsultas();
+        let historico=getHistorico();
+        consultas.forEach((c,i)=>{
+            let reagendada=historico.some(h=>h.nome===c.nome && h.dataNova===c.data && h.horaNova===c.hora);
+            div.innerHTML+=gerarCard(c,i,reagendada);
+        });
+    } else if(tipo==="concluidas"){
+        div.innerHTML="<h3>Consultas concluídas</h3>";
+        let concluidas=getConcluidas();
+        if(concluidas.length===0){div.innerHTML+="<p>Nenhuma ainda</p>";return;}
+        concluidas.forEach((c,i)=>{
+            div.innerHTML+=`<div class="consulta concluida" id="concluida${i}">
+                <b>${c.nome}</b><br>${c.esp}<br>${c.hospital}<br>📅 ${formatarData(c.data)} ⏰ ${c.hora}
+                <div class="botoes">
+                    <button onclick="excluirConcluida(${i});" style="background:#ff4444;">Excluir</button>
+                </div>
+            </div>`;
+        });
+    } else if(tipo==="historico"){
+        div.innerHTML="<h3>Histórico de reagendamentos</h3>";
+        let historico=getHistorico();
+        if(historico.length===0){div.innerHTML+="<p>Nenhum reagendamento</p>";return;}
+        historico.forEach(h=>{
+            div.innerHTML+=`<div class="consulta"><b>${h.nome}</b><br>De: ${formatarData(h.dataAntiga)} ${h.horaAntiga}<br>Para: ${formatarData(h.dataNova)} ${h.horaNova}</div>`;
+        });
+    }
+}
+
+/* Configuração do clique único/duplo */
+let clickTimer = null; // global
+function setupToggle(elementId, tipo) {
+    const elem = document.getElementById(elementId);
+    elem.addEventListener("click", () => {
+        if(clickTimer){
+            // duplo clique
+            clearTimeout(clickTimer);
+            clickTimer = null;
+            toggleLista(null);
+        } else {
+            clickTimer = setTimeout(()=>{
+                toggleLista(tipo); // clique único abre
+                clickTimer = null;
+            }, 250);
+        }
+    });
+}
+
+// Inicializar os botões
+setupToggle("btnAgendadas","agendadas");
+setupToggle("btnConcluidas","concluidas");
+setupToggle("btnHistorico","historico");
+
+/* Excluir consulta concluída */
+function excluirConcluida(index){
+    if(!confirm("Deseja excluir esta consulta concluída?")) return;
+    let concluidas=getConcluidas();
+    concluidas.splice(index,1);
+    localStorage.setItem("concluidas",JSON.stringify(concluidas));
+    toggleLista("concluidas");
+}
+
+// Iniciar app direto
+mostrar();
+</script>
+</body>
+</html>
