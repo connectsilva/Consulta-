@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Health Agenda Pro</title>
 
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#00e676">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon-192.png">
+
 <style>
     :root {
         --p-primary: #00e676;
@@ -170,7 +176,7 @@
         </div>
     </div>
 
-    <div class="card" onclick="toggleAcordeao(this)">
+    <div class="card" onclick="toggleAcordeao(this)" id="formCard">
         <div class="acordeao-header">
             <h3 style="margin:0; font-size: 18px; color: var(--p-primary);" id="formTitle">➕ Novo Agendamento</h3>
             <span>▼</span>
@@ -200,6 +206,15 @@
 </div>
 
 <script>
+    // Registro do Service Worker para PWA
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then(reg => console.log('Service Worker registrado!', reg))
+                .catch(err => console.error('Falha ao registrar Service Worker', err));
+        });
+    }
+
     const db = {
         get: () => JSON.parse(localStorage.getItem('consultas') || "[]"),
         set: (val) => localStorage.setItem('consultas', JSON.stringify(val))
@@ -216,7 +231,6 @@
     function verOpcao(tipo) {
         toggleMenu();
         notify("Filtrando: " + tipo);
-        // Lógica de visualização pode ser expandida aqui
     }
 
     function salvar() {
