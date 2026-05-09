@@ -1,24 +1,35 @@
-const CACHE_NAME = 'health-agenda-v1';
+const CACHE_NAME = 'health-agenda-v-pro';
 const ASSETS = [
   './',
-  './index.html',
-  './manifest.json'
+  './index.html'
 ];
 
-// Instalação e Cache
-self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+// Instala o Service Worker e limpa caches antigos automaticamente
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(ASSETS);
+    })
   );
 });
 
-// Resposta offline
-self.addEventListener('fetch', (e) => {
-  e.respondWith(
-    caches.match(e.request).then((res) => res || fetch(e.request))
+// Ativa e remove caches de versões anteriores
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+      );
+    })
   );
 });
-    return response || fetch(event.request);
+
+// Estratégia: Tenta Rede primeiro, se falhar (offline), usa o Cache.
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    fetch(event.request).catch(() => {
+      return caches.match(event.request);
     })
   );
 });
